@@ -1,10 +1,10 @@
-import { createBrowserRouter, RouterProvider } from 'react-router'
+import { createHashRouter, RouterProvider } from 'react-router'
 
 import { Menu } from '@/features/menu/ui'
 import { DrawLines } from '@/pages/draw-lines'
 import { DrawRects } from '@/pages/draw-rects'
 
-const router = createBrowserRouter([
+const router = createHashRouter([
 	{
 		path: '/',
 		element: <Menu />,

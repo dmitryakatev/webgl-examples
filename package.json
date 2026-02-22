@@ -7,6 +7,7 @@
 		"start": "vite",
 		"dev": "tsc -b && vite build --sourcemap true",
 		"build": "tsc -b && vite build",
+		"github-build": "tsc -b && vite build --sourcemap true --config vite.github.config.ts",
 		"lint": "eslint .",
 		"preview": "vite preview"
 	},
