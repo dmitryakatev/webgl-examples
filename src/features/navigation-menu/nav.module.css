@@ -1,0 +1,12 @@
+.nav {
+	display: block;
+}
+
+.nav a {
+	display: block;
+	align-items: center;
+	padding: 6px 30px;
+	box-sizing: border-box;
+	cursor: pointer;
+	font-size: 18px;
+}

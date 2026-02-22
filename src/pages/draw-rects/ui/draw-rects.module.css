@@ -1,0 +1,23 @@
+.container {
+	display: flex;
+}
+
+.canvasWrap {
+	width: 800px;
+}
+
+.content {
+	width: 800px;
+	height: 800px;
+	border: 1px solid silver;
+}
+
+.canvas {
+	display: block;
+	width: 800px;
+	height: 800px;
+}
+
+.content {
+	flex: 1;
+}

@@ -1,0 +1,19 @@
+.debugger {
+	position: relative;
+	display: inline-block;
+	line-height: 0;
+}
+
+.button {
+	position: absolute;
+	right: 10px;
+	top: 10px;
+	width: 24px;
+	height: 24px;
+	cursor: pointer;
+}
+
+.window {
+	width: 400px;
+	height: 400px;
+}

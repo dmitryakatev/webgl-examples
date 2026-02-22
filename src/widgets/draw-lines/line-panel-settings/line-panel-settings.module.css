@@ -1,0 +1,26 @@
+.lineSettings {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+}
+
+.wrap {
+	padding: 10px;
+}
+
+.wrap:last-child {
+	flex: 1;
+	display: flex;
+}
+
+.input {
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.textarea {
+	width: 100%;
+	flex: 1;
+	box-sizing: border-box;
+	resize: none;
+}
