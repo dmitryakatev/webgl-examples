@@ -126,10 +126,10 @@ export class CanvasDrawer {
 	}
 
 	public drawElements(
-		mode: number,
+		_mode: number,
 		count: number,
 		type: number,
-		offset: number,
+		_offset: number,
 		program: WebGLEmulatorProgram,
 		vertexBuffer: ArrayBuffer,
 		indexesBuffer: ArrayBuffer,

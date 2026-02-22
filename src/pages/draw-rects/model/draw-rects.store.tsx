@@ -15,16 +15,16 @@ export const useDrawRectStore = create<DrawRectsState>(() => {
 	const structArray = structArrayFactory.create()
 	let webglApp: WebglApp | null = null
 
-	const getRange = (
-		a: number,
-		b: number,
-		offset: number,
-	): [start: number, end: number] => {
-		const diff = b - a
-		const half = diff / 2
-		const withOffset = half + offset
-		return [-withOffset, withOffset]
-	}
+	// const getRange = (
+	// 	a: number,
+	// 	b: number,
+	// 	offset: number,
+	// ): [start: number, end: number] => {
+	// 	const diff = b - a
+	// 	const half = diff / 2
+	// 	const withOffset = half + offset
+	// 	return [-withOffset, withOffset]
+	// }
 
 	const createVertexes = (item: RectItem): Struct<StructPointForRect>[] => {
 		const { x1, y1, x2, y2, radius } = item

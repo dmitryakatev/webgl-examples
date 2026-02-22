@@ -13,7 +13,18 @@ export const RectList = () => {
 		<div>
 			<button
 				className={styles.add}
-				onClick={() => add({ id: getId(), x1: 0, y1: 0, x2: 0, y2: 0 })}
+				onClick={() =>
+					add({
+						id: getId(),
+						x1: 0,
+						y1: 0,
+						x2: 0,
+						y2: 0,
+						offsetX: 0,
+						offsetY: 0,
+						radius: 0,
+					})
+				}
 			>
 				add
 			</button>

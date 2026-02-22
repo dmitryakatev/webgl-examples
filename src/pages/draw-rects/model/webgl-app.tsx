@@ -8,7 +8,6 @@ import { RectProgram } from './rects-program'
 import { bufferFactory } from './strcut-rect'
 
 export class WebglApp {
-	private $canvas: HTMLCanvasElement
 	private gl: WebGLRenderingContext
 	private camera: Camera
 
@@ -22,7 +21,6 @@ export class WebglApp {
 	}
 
 	constructor($canvas: HTMLCanvasElement, gl: WebGLRenderingContext) {
-		this.$canvas = $canvas
 		this.gl = gl
 
 		this.buffer = bufferFactory.create(gl)

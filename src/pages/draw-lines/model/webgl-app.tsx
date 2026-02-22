@@ -16,7 +16,6 @@ import {
 import type { LineBuffers } from './draw-lines.types'
 
 export class WebglApp {
-	private $canvas: HTMLCanvasElement
 	private gl: WebGLRenderingContext
 	private camera: Camera
 
@@ -30,7 +29,6 @@ export class WebglApp {
 	}
 
 	constructor($canvas: HTMLCanvasElement, gl: WebGLRenderingContext) {
-		this.$canvas = $canvas
 		this.gl = gl
 
 		this.lines = []

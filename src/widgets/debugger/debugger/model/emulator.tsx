@@ -33,6 +33,7 @@ export class WebGLEmulatorContext {
 		this._drawer = new CanvasDrawer()
 
 		this._compile = GLSL({
+			optimize: false,
 			uniform: (name) => {
 				return `uniforms.${name}`
 			},
@@ -136,12 +137,7 @@ export class WebGLEmulatorContext {
 						'return gl_Position;',
 					].join('\n')
 
-					fn = new Function(
-						'attributes',
-						'uniforms',
-						'varyings',
-						source,
-					)
+					fn = Function('attributes', 'uniforms', 'varyings', source)
 				}
 
 				// if fragment
@@ -158,7 +154,7 @@ export class WebGLEmulatorContext {
 						'return gl_FragColor;',
 					].join('\n')
 
-					fn = new Function(
+					fn = Function(
 						'uniforms',
 						'varyings',
 						'gl_FragCoord',
@@ -318,7 +314,7 @@ export class WebGLEmulatorContext {
 
 	public uniformMatrix2fv(
 		location: WebGLUniformLocation | null,
-		transpose: boolean,
+		_transpose: boolean,
 		value: number[],
 	): void {
 		this.setUniform(location, value)
@@ -326,7 +322,7 @@ export class WebGLEmulatorContext {
 
 	public uniformMatrix3fv(
 		location: WebGLUniformLocation | null,
-		transpose: boolean,
+		_transpose: boolean,
 		value: number[],
 	): void {
 		this.setUniform(location, value)
@@ -334,7 +330,7 @@ export class WebGLEmulatorContext {
 
 	public uniformMatrix4fv(
 		location: WebGLUniformLocation | null,
-		transpose: boolean,
+		_transpose: boolean,
 		value: number[],
 	): void {
 		this.setUniform(location, value)
@@ -359,7 +355,7 @@ export class WebGLEmulatorContext {
 		this._drawer.viewport(x, y, width, height)
 	}
 
-	public clear(mask: number): void {
+	public clear(_mask: number): void {
 		this._drawer.clear()
 	}
 
@@ -387,7 +383,7 @@ export class WebGLEmulatorContext {
 	public bufferData(
 		target: number,
 		data: AllowSharedBufferSource | null,
-		usage: GLenum,
+		_usage: GLenum,
 	): void {
 		this.changeData(target, data as ArrayBuffer, true)
 	}
@@ -431,7 +427,7 @@ export class WebGLEmulatorContext {
 		index: number,
 		size: number,
 		type: number,
-		normalized: boolean,
+		_normalized: boolean,
 		stride: number,
 		offset: number,
 	): void {
