@@ -1,0 +1,28 @@
+.container {
+  position: relative;
+}
+
+.vertical {
+  overflow-x: auto;
+}
+
+.horisontal {
+  overflow-x: auto;
+}
+
+.frame {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+.content {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.data {
+  position: absolute;
+  width: 100%;
+}

@@ -9,5 +9,6 @@ export const NavigationMenu = () => (
 		</NavLink> */}
 		<NavLink to="/demo-1">Пример 1</NavLink>
 		<NavLink to="/demo-2">Пример 2</NavLink>
+		<NavLink to="/demo-3">Пример 3</NavLink>
 	</nav>
 )

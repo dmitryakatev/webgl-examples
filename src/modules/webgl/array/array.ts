@@ -24,7 +24,7 @@ export const createArrayIndexesFactory = (
 		fields: [
 			{
 				name: 'index',
-				count: 3,
+				count: 1,
 				type: options.type ?? 'uint16',
 			},
 		],

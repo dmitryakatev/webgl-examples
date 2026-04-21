@@ -1,0 +1,37 @@
+.containerArrow {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.arrow {
+	display: inline-block;
+	width: 8px;
+	height: 8px;
+	border-top: 2px solid #333;
+	border-right: 2px solid #333;
+
+	transform: rotate(45deg);
+
+	transition: transform 0.2s ease;
+	cursor: pointer;
+	vertical-align: middle;
+	margin-right: 10px;
+}
+
+.expandedCell {
+	padding: 0;
+	display: flex;
+	justify-content: center;
+	cursor: pointer;
+}
+
+.expanded {
+	.arrow {
+		transform: rotate(135deg);
+	}
+}
+
+.selectable {
+	cursor: pointer;
+}

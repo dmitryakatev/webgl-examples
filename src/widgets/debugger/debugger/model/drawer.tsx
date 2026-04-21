@@ -1,46 +1,49 @@
-import { UnpackArray } from './unpack-array'
+import RBush from 'rbush'
 
-import type { AttributePointer, WebGLEmulatorProgram } from './emulator.types'
+import { calcIndexes } from './utils/calc.indexes'
+import { calcVertex } from './utils/calc.vertex'
+import { rasterizeTriangle } from './utils/rasterize'
+import { extendsBBox, getBBoxByTriangle, getLocalCoord } from './utils/utils'
 
-type Value = number | Float32Array
-type VertexValue = {
-	glPos: Float32Array
-	screenPos: {
-		x: number
-		y: number
-	}
-	varyings: Record<string, Value>
-}
-
-type TriangleMeta = {
-	path: Path2D
-	v1: VertexValue
-	v2: VertexValue
-	v3: VertexValue
-	fragment: any // TODO
-	uniforms: Record<string, number | number[]>
-}
-
-type Pos = {
-	x: number
-	y: number
-}
+import type {
+	TriangleMeta,
+	BufferDrawed,
+	Rect,
+	DrawOptions,
+	DrawerType,
+	BBoxItem,
+	Logger,
+} from './drawer.types'
+import type { FragmentShaderFn, UniformValues } from './emulator.types'
 
 export class CanvasDrawer {
 	private _canvas: HTMLCanvasElement | null
 	private _ctx: CanvasRenderingContext2D | null
-	private _triangles: TriangleMeta[]
-	private _rect: {
-		x: number
-		y: number
-		width: number
-		height: number
-	}
+	private _logger: Logger | null
+
+	private _rasterizeCanvas: HTMLCanvasElement
+	private _rasterizeCtx: CanvasRenderingContext2D
+
+	private _buffersDrawed: BufferDrawed[]
+	private _rbush: RBush<BBoxItem>
+	private _rect: Rect
+
+	private _selectedBufferIndex: number | null
+	private _selectedVertexIndex: number | null
+	private _selectedTriangleIndex: number | null
 
 	constructor() {
 		this._canvas = null
 		this._ctx = null
-		this._triangles = []
+		this._logger = null
+
+		this._rasterizeCanvas = document.createElement('canvas')
+		this._rasterizeCtx = this._rasterizeCanvas.getContext(
+			'2d',
+		) as CanvasRenderingContext2D
+
+		this._buffersDrawed = []
+		this._rbush = new RBush()
 		this._rect = {
 			x: 0,
 			y: 0,
@@ -48,17 +51,31 @@ export class CanvasDrawer {
 			height: 0,
 		}
 
+		this._selectedBufferIndex = null
+		this._selectedVertexIndex = null
+		this._selectedTriangleIndex = null
+
 		this.onClickCanvas = this.onClickCanvas.bind(this)
 	}
 
 	public __connect(
 		canvas: HTMLCanvasElement,
 		ctx: CanvasRenderingContext2D,
+		logger: Logger,
 	): void {
 		this._canvas = canvas
 		this._ctx = ctx
+		this._logger = logger
 
 		this._canvas.addEventListener('click', this.onClickCanvas)
+		logger.clear()
+
+		for (const item of this._buffersDrawed) {
+			this.prepareBuffer(item)
+			this.drawItem(ctx, item)
+
+			logger.add(item)
+		}
 	}
 
 	public __disconnect(): void {
@@ -68,6 +85,120 @@ export class CanvasDrawer {
 
 		this._canvas = null
 		this._ctx = null
+
+		this._rbush.clear()
+		for (const item of this._buffersDrawed) {
+			this.clearPrepareBuffer(item)
+		}
+	}
+
+	private redraw(): void {
+		const ctx = this._ctx
+
+		if (!ctx) {
+			return
+		}
+
+		this.clearDraw()
+		for (const item of this._buffersDrawed) {
+			this.drawItem(ctx, item)
+		}
+
+		this.drawSelected()
+	}
+
+	private drawSelected(): void {
+		if (this._selectedBufferIndex == null) {
+			return
+		}
+
+		if (this._selectedVertexIndex !== null) {
+			this.drawSelectedVertex(
+				this._selectedBufferIndex,
+				this._selectedVertexIndex,
+			)
+			return
+		}
+
+		if (this._selectedTriangleIndex !== null) {
+			this.drawSelectedTriangle(
+				this._selectedBufferIndex,
+				this._selectedTriangleIndex,
+			)
+			return
+		}
+
+		this.drawSelectedBuffer(this._selectedBufferIndex)
+	}
+
+	private drawSelectedBuffer(bufferIndex: number): void {
+		const ctx = this._ctx
+
+		if (ctx) {
+			const { bBox } = this._buffersDrawed[bufferIndex]
+			const { minX, minY, maxX, maxY } = bBox
+
+			ctx.strokeStyle = 'blue'
+			ctx.lineWidth = 1
+
+			ctx.strokeRect(minX, minY, maxX - minX, maxY - minY)
+		}
+	}
+
+	private drawSelectedVertex(bufferIndex: number, vertexIndex: number): void {
+		const ctx = this._ctx
+
+		if (ctx) {
+			const buffer = this._buffersDrawed[bufferIndex]
+			const vertex = buffer.vertexes[vertexIndex]
+			const x = Math.round(vertex.screenPos.x)
+			const y = Math.round(vertex.screenPos.y)
+
+			ctx.strokeStyle = 'blue'
+			ctx.lineWidth = 1
+
+			ctx.beginPath()
+			ctx.arc(x, y, 5, 0, Math.PI * 2)
+			ctx.stroke()
+		}
+	}
+
+	private drawSelectedTriangle(
+		bufferIndex: number,
+		triangleIndex: number,
+	): void {
+		console.log(bufferIndex, triangleIndex)
+	}
+
+	public selectBuffer(bufferIndex: number): void {
+		this.resetSelect()
+		this._selectedBufferIndex = bufferIndex
+		this.redraw()
+	}
+
+	public selectVertex(bufferIndex: number, vertexIndex: number): void {
+		this.resetSelect()
+		this._selectedBufferIndex = bufferIndex
+		this._selectedVertexIndex = vertexIndex
+		this.redraw()
+	}
+
+	public selectTriangle(bufferIndex: number, triangleIndex: number): void {
+		this.resetSelect()
+		this._selectedBufferIndex = bufferIndex
+		this._selectedTriangleIndex = triangleIndex
+		this.redraw()
+	}
+
+	public clearSelect(): void {
+		this.resetSelect()
+		this.redraw()
+	}
+
+	private resetSelect(): void {
+		this._selectedBufferIndex = null
+		this._selectedVertexIndex = null
+		this._selectedTriangleIndex = null
 	}
 
 	private onClickCanvas(e: MouseEvent): void {
@@ -76,11 +207,22 @@ export class CanvasDrawer {
 			return
 		}
 
-		const { x, y } = this.getLocalCoord(e)
+		const { x, y } = getLocalCoord(e)
+		const result = this._rbush.search({
+			minX: x,
+			minY: y,
+			maxX: x,
+			maxY: y,
+		})
 
-		for (const triangle of this._triangles) {
+		for (let i = result.length - 1; i >= 0; --i) {
+			const { bufferIndex, triangleIndex } = result[i]
+			const bufferMeta = this._buffersDrawed[bufferIndex]
+			const triangle = bufferMeta.triangles[triangleIndex]
+
 			if (ctx.isPointInPath(triangle.path, x, y)) {
-				this.rasterizeTriangle(ctx, triangle)
+				const { fragment, uniforms } = bufferMeta
+				this.rasterizeTriangle(ctx, fragment, uniforms, triangle)
 				return
 			}
 		}
@@ -95,9 +237,7 @@ export class CanvasDrawer {
 		}
 	}
 
-	public clear(): void {
-		this._triangles = []
-
+	public clearDraw(): void {
 		const ctx = this._ctx
 		if (ctx) {
 			const { x, y, width, height } = this._rect
@@ -105,304 +245,175 @@ export class CanvasDrawer {
 		}
 	}
 
-	public drawArrays(
-		mode: number,
-		first: number,
-		count: number,
-		program: WebGLEmulatorProgram,
-		vertexBuffer: ArrayBuffer,
-		attributes: Record<string, AttributePointer>,
-		uniforms: Record<string, number | number[]>,
-	): void {
-		console.log(
+	public clear(): void {
+		this._buffersDrawed = []
+		this._rbush.clear()
+
+		this.resetSelect()
+		this.clearDraw()
+
+		const logger = this._logger
+		if (logger) {
+			logger.clear()
+		}
+	}
+
+	public drawBuffer(type: DrawerType, options: DrawOptions): void {
+		const index = this._buffersDrawed.length
+		const item: BufferDrawed = {
+			type,
+			index,
+			options,
+
+			fragment: options.program.fragment,
+			uniforms: options.uniforms,
+
+			triangles: [],
+			vertexes: [],
+			bBox: {
+				minX: Infinity,
+				minY: Infinity,
+				maxX: -Infinity,
+				maxY: -Infinity,
+			},
+		}
+
+		this._buffersDrawed.push(item)
+
+		const ctx = this._ctx
+		if (ctx) {
+			this.prepareBuffer(item)
+			this.drawItem(ctx, item)
+		}
+
+		const logger = this._logger
+		if (logger) {
+			logger.add(item)
+		}
+	}
+
+	private prepareBuffer(item: BufferDrawed): void {
+		const {
 			mode,
-			first,
+			type,
+			offset,
 			count,
 			program,
 			vertexBuffer,
+			indexesBuffer,
 			attributes,
 			uniforms,
-		)
-	}
+		} = item.options
 
-	public drawElements(
-		_mode: number,
-		count: number,
-		type: number,
-		_offset: number,
-		program: WebGLEmulatorProgram,
-		vertexBuffer: ArrayBuffer,
-		indexesBuffer: ArrayBuffer,
-		attributes: Record<string, AttributePointer>,
-		uniforms: Record<string, number | number[]>,
-	): void {
-		const ctx = this._ctx
-		if (!ctx) {
-			return
-		}
-
-		const vertexValues = this.calcVertex(
+		const vertexValues = calcVertex(
 			program,
 			vertexBuffer,
 			attributes,
 			uniforms,
+			this._rect,
 		)
-		const unpackIndexes = new UnpackArray(indexesBuffer, {
-			index: {
-				size: 3,
-				type,
-				stride: UnpackArray.getSize(type) * 3,
-				offset: 0,
-			},
-		})
 
-		ctx.strokeStyle = 'black'
-		ctx.lineWidth = 1
+		const indexValues = calcIndexes(
+			indexesBuffer,
+			mode,
+			type,
+			offset,
+			count,
+		)
 
-		const { fragment } = program
+		const tree = this._rbush
+		const { triangles, vertexes, bBox } = item
 
-		const size = Math.round(count / 3)
-		for (let i = 0; i < size; ++i) {
-			const idx = unpackIndexes.unpack(i)
-			const [i1, i2, i3] = idx.index as number[]
+		for (const vertex of vertexValues) {
+			vertexes.push(vertex)
+			extendsBBox(bBox, vertex.screenPos)
+		}
 
+		for (const {
+			indexes: [i1, i2, i3],
+		} of indexValues) {
 			const v1 = vertexValues[i1]
 			const v2 = vertexValues[i2]
 			const v3 = vertexValues[i3]
 
-			const trianglePath = new Path2D()
-			trianglePath.moveTo(v1.screenPos.x, v1.screenPos.y)
-			trianglePath.lineTo(v2.screenPos.x, v2.screenPos.y)
-			trianglePath.lineTo(v3.screenPos.x, v3.screenPos.y)
-			trianglePath.lineTo(v1.screenPos.x, v1.screenPos.y)
-			trianglePath.closePath()
-			ctx.stroke(trianglePath)
+			const bBox = getBBoxByTriangle(v1, v2, v3)
+			const index = triangles.length
 
-			this._triangles.push({
-				path: trianglePath,
+			const path = new Path2D()
+			path.moveTo(v1.screenPos.x, v1.screenPos.y)
+			path.lineTo(v2.screenPos.x, v2.screenPos.y)
+			path.lineTo(v3.screenPos.x, v3.screenPos.y)
+			path.lineTo(v1.screenPos.x, v1.screenPos.y)
+			path.closePath()
+
+			triangles.push({
+				path,
+				index,
+				bBox,
 				v1,
 				v2,
 				v3,
-				fragment,
-				uniforms,
+			})
+
+			tree.insert({
+				bufferIndex: item.index,
+				triangleIndex: index,
+				minX: bBox.minX,
+				minY: bBox.minY,
+				maxX: bBox.maxX,
+				maxY: bBox.maxY,
 			})
 		}
+	}
 
-		// console.log(
-		// 	mode,
-		// 	count,
-		// 	type,
-		// 	offset,
-		// 	program,
-		// 	vertexBuffer,
-		// 	indexesBuffer,
-		// 	attributes,
-		// 	uniforms,
-		// )
+	private clearPrepareBuffer(item: BufferDrawed): void {
+		item.triangles = []
+	}
+
+	private drawItem(ctx: CanvasRenderingContext2D, item: BufferDrawed): void {
+		ctx.strokeStyle = 'black'
+		ctx.lineWidth = 1
+
+		for (const { path } of item.triangles) {
+			ctx.stroke(path)
+		}
 	}
 
 	private rasterizeTriangle(
 		ctx: CanvasRenderingContext2D,
+		fragment: FragmentShaderFn,
+		uniforms: UniformValues,
 		triangle: TriangleMeta,
 	): void {
-		const { v1, v2, v3, uniforms, fragment } = triangle
+		const rasterizeCanvas = this._rasterizeCanvas
+		const rasterizeCtx = this._rasterizeCtx
 		const rect = this._rect
+		const { width, height } = rect
+		const { bBox, v1, v2, v3 } = triangle
 
-		const minX = Math.floor(
-			Math.min(v1.screenPos.x, v2.screenPos.x, v3.screenPos.x),
-		)
-		const maxX = Math.ceil(
-			Math.max(v1.screenPos.x, v2.screenPos.x, v3.screenPos.x),
-		)
+		this.refreshRasterizeCanvas(width, height)
 
-		const minY = Math.floor(
-			Math.min(v1.screenPos.y, v2.screenPos.y, v3.screenPos.y),
-		)
-		const maxY = Math.ceil(
-			Math.max(v1.screenPos.y, v2.screenPos.y, v3.screenPos.y),
-		)
+		const imageData = rasterizeCtx.createImageData(width, height)
+		const data = new Uint32Array(imageData.data.buffer)
 
-		for (let y = minY; y <= maxY; y++) {
-			for (let x = minX; x <= maxX; x++) {
-				if (
-					x < rect.x ||
-					x > rect.width ||
-					y < rect.y ||
-					y > rect.height
-				) {
-					continue
-				}
+		rasterizeTriangle(data, rect, bBox, v1, v2, v3, fragment, uniforms)
 
-				// ВАЖНО: проверяем точку (x + 0.5, y + 0.5) — это центр пикселя
-				const weights = this.getBarycentric(
-					x + 0.5,
-					y + 0.5,
-					v1.screenPos,
-					v2.screenPos,
-					v3.screenPos,
-				)
-
-				if (weights) {
-					const vars: Record<string, Value> = {}
-					const gl_FragCoord = new Float32Array([
-						x + 0.5,
-						y + 0.5,
-						0,
-						1,
-					])
-
-					for (const key in v1.varyings) {
-						vars[key] = this.interpolate(
-							weights,
-							v1.varyings[key],
-							v2.varyings[key],
-							v3.varyings[key],
-						)
-					}
-
-					const glCol = fragment(uniforms, vars, gl_FragCoord)
-					const color = this.toCanvasColor(glCol)
-
-					ctx.fillStyle = color
-					ctx.fillRect(x, y, 1, 1)
-				}
-			}
-		}
+		rasterizeCtx.putImageData(imageData, 0, 0)
+		ctx.drawImage(rasterizeCanvas, 0, 0)
 	}
 
-	private calcVertex(
-		program: WebGLEmulatorProgram,
-		vertexBuffer: ArrayBuffer,
-		attributes: Record<string, AttributePointer>,
-		uniforms: Record<string, number | number[]>,
-	) {
-		const result: VertexValue[] = []
-		const unpackVertex = new UnpackArray(vertexBuffer, attributes)
-		const { stride } = Object.values(attributes)[0]
-		const size = Math.round(vertexBuffer.byteLength / stride)
+	private refreshRasterizeCanvas(
+		nextWidth: number,
+		nextHeight: number,
+	): void {
+		const { width, height } = this._rasterizeCanvas
 
-		const { vertex, varyings } = program
-
-		for (let i = 0; i < size; ++i) {
-			const attrs = unpackVertex.unpack(i)
-			const vars: Record<string, Value> = {}
-
-			for (const name in varyings) {
-				const count = varyings[name]
-
-				switch (count) {
-					case 1:
-						vars[name] = 0
-						break
-					case 2:
-						vars[name] = new Float32Array([0, 0])
-						break
-					case 3:
-						vars[name] = new Float32Array([0, 0, 0])
-						break
-					case 4:
-						vars[name] = new Float32Array([0, 0, 0, 0])
-						break
-				}
-			}
-
-			const glPos = vertex(attrs, uniforms, vars)
-			const screenPos = this.ndcToScreen(glPos)
-			result.push({
-				glPos,
-				screenPos,
-				varyings: vars,
-			})
+		if (width !== nextWidth) {
+			this._rasterizeCanvas.width = nextWidth
 		}
 
-		return result
-	}
-
-	private ndcToScreen(glPos: Float32Array) {
-		const { width, height } = this._rect
-		// glPos это твой [x, y, z, w]
-		// Сначала делаем Perspective Divide (деление на w)
-		// В 2D это часто [x/w, y/w], если w не 1.0
-		const x = glPos[0] / glPos[3]
-		const y = glPos[1] / glPos[3]
-
-		const screenX = (x + 1) * 0.5 * width
-		// Инвертируем Y: (1 - (нормализованный_y)) * height
-		const screenY = (1 - (y + 1) * 0.5) * height
-		// Или проще: screenY = (1 - y) * 0.5 * height;
-
-		return {
-			x: screenX,
-			y: screenY,
+		if (height !== nextHeight) {
+			this._rasterizeCanvas.height = nextHeight
 		}
-	}
-
-	private getLocalCoord(e: MouseEvent) {
-		const el = e.currentTarget as HTMLElement
-		const { top, left } = el.getBoundingClientRect()
-
-		return {
-			x: e.pageX - (left + window.scrollX),
-			y: e.pageY - (top + window.scrollY),
-		}
-	}
-
-	private getBarycentric(px: number, py: number, p1: Pos, p2: Pos, p3: Pos) {
-		// Вспомогательная функция для ориентированной площади треугольника
-		function edgeFunction(
-			ax: number,
-			ay: number,
-			bx: number,
-			by: number,
-			cx: number,
-			cy: number,
-		) {
-			return (cx - ax) * (by - ay) - (cy - ay) * (bx - ax)
-		}
-
-		const area = edgeFunction(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y)
-
-		// Если площадь 0, треугольник вырожден в линию
-		if (Math.abs(area) < 0.000001) return null
-
-		const w1 = edgeFunction(p2.x, p2.y, p3.x, p3.y, px, py) / area
-		const w2 = edgeFunction(p3.x, p3.y, p1.x, p1.y, px, py) / area
-		const w3 = 1 - w1 - w2
-
-		if (w1 >= 0 && w2 >= 0 && w3 >= 0) {
-			return [w1, w2, w3]
-		}
-		return null
-	}
-
-	private interpolate(
-		weights: number[],
-		valA: Value,
-		valB: Value,
-		valC: Value,
-	) {
-		const [u, v, w] = weights
-
-		// 1. Если это просто число (float)
-		if (typeof valA === 'number') {
-			return valA * u + (valB as number) * v + (valC as number) * w
-		}
-
-		return valA.map((_, i) => {
-			return (
-				valA[i] * u +
-				(valB as Float32Array)[i] * v +
-				(valC as Float32Array)[i] * w
-			)
-		})
-	}
-
-	private toCanvasColor(glVec4: Float32Array) {
-		const r = Math.round(Math.max(0, Math.min(1, glVec4[0])) * 255)
-		const g = Math.round(Math.max(0, Math.min(1, glVec4[1])) * 255)
-		const b = Math.round(Math.max(0, Math.min(1, glVec4[2])) * 255)
-		const a = glVec4[3] // Альфа в канвасе тоже от 0 до 1, её не множим на 255!
-
-		return `rgba(${r}, ${g}, ${b}, ${a})`
 	}
 }

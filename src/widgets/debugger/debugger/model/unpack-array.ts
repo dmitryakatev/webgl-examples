@@ -1,5 +1,14 @@
 import type { AttributePointer } from './emulator.types'
 
+type GLTypedArrayConstructor =
+	| Int8ArrayConstructor
+	| Uint8ArrayConstructor
+	| Int16ArrayConstructor
+	| Uint16ArrayConstructor
+	| Int32ArrayConstructor
+	| Uint32ArrayConstructor
+	| Float32ArrayConstructor
+
 type GLTypedArray =
 	| Int8Array
 	| Uint8Array
@@ -17,40 +26,43 @@ type Field = {
 	block: number
 }
 
-const sizes = new Map<number, number>([
-	[WebGLRenderingContext.BYTE, Int8Array.BYTES_PER_ELEMENT],
-	[WebGLRenderingContext.UNSIGNED_BYTE, Uint8Array.BYTES_PER_ELEMENT],
-	[WebGLRenderingContext.SHORT, Int16Array.BYTES_PER_ELEMENT],
-	[WebGLRenderingContext.UNSIGNED_SHORT, Uint16Array.BYTES_PER_ELEMENT],
-	[WebGLRenderingContext.INT, Int32Array.BYTES_PER_ELEMENT],
-	[WebGLRenderingContext.UNSIGNED_INT, Uint32Array.BYTES_PER_ELEMENT],
-	[WebGLRenderingContext.FLOAT, Float32Array.BYTES_PER_ELEMENT],
+const constructors = new Map<number, GLTypedArrayConstructor>([
+	[WebGLRenderingContext.BYTE, Int8Array],
+	[WebGLRenderingContext.UNSIGNED_BYTE, Uint8Array],
+	[WebGLRenderingContext.SHORT, Int16Array],
+	[WebGLRenderingContext.UNSIGNED_SHORT, Uint16Array],
+	[WebGLRenderingContext.INT, Int32Array],
+	[WebGLRenderingContext.UNSIGNED_INT, Uint32Array],
+	[WebGLRenderingContext.FLOAT, Float32Array],
 ])
+
+const getArrayConstructor = (type: number) => {
+	return constructors.get(type) as GLTypedArrayConstructor
+}
 
 export class UnpackArray {
 	private fields: Field[]
 
 	static getSize(type: number): number {
-		return sizes.get(type) as number
+		return getArrayConstructor(type).BYTES_PER_ELEMENT
 	}
 
-	constructor(array: ArrayBuffer, fields: Record<string, AttributePointer>) {
+	constructor(buffer: ArrayBuffer, fields: Record<string, AttributePointer>) {
 		this.fields = []
 
-		const map = new Map<number, GLTypedArray>([
-			[WebGLRenderingContext.BYTE, new Int8Array(array)],
-			[WebGLRenderingContext.UNSIGNED_BYTE, new Uint8Array(array)],
-			[WebGLRenderingContext.SHORT, new Int16Array(array)],
-			[WebGLRenderingContext.UNSIGNED_SHORT, new Uint16Array(array)],
-			[WebGLRenderingContext.INT, new Int32Array(array)],
-			[WebGLRenderingContext.UNSIGNED_INT, new Uint32Array(array)],
-			[WebGLRenderingContext.FLOAT, new Float32Array(array)],
-		])
+		const map = new Map<number, GLTypedArray>()
 
 		for (const name in fields) {
 			const field = fields[name]
-			const array = map.get(field.type) as GLTypedArray
-			const bytes = UnpackArray.getSize(field.type)
+			const { type } = field
+			const bytes = UnpackArray.getSize(type)
+
+			let array = map.get(field.type)
+			if (!array) {
+				const Constructor = getArrayConstructor(type)
+				array = new Constructor(buffer)
+				map.set(type, array)
+			}
 
 			this.fields.push({
 				name,

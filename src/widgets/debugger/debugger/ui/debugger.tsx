@@ -1,8 +1,6 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
 
-import { Window } from '@/widgets/window'
-
-import { DebuggerPanel } from '../../debugger-panel/ui'
+import { DebuggerWindow } from '../../debugger-window'
 import { WebGLEmulatorContext } from '../model/emulator'
 import { createProxy } from '../model/proxy'
 
@@ -44,13 +42,12 @@ export const Debugger = forwardRef<DebuggerRef, DebuggerProps>(
 					i
 				</button>
 				{open && (
-					<Window title="Отладчик WebGL" onClose={onDebuggerClose}>
-						<DebuggerPanel
-							size={size}
-							// eslint-disable-next-line react-hooks/refs
-							emulator={emulator.current}
-						/>
-					</Window>
+					<DebuggerWindow
+						// eslint-disable-next-line react-hooks/refs
+						emulator={emulator.current}
+						onCloce={onDebuggerClose}
+						size={size}
+					/>
 				)}
 			</div>
 		)

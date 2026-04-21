@@ -1,12 +1,16 @@
 import GLSL from 'glsl-transpiler'
 
 import { CanvasDrawer } from './drawer'
+import { Drawer, type Logger } from './drawer.types'
 
 import type {
 	WebGLEmulatorRawProgram,
 	WebGLEmulatorRawShader,
 	WebGLEmulatorProgram,
 	AttributePointer,
+	UnknownShaderFn,
+	VertexShaderFn,
+	FragmentShaderFn,
 } from './emulator.types'
 
 import './stdlib-polyfill'
@@ -28,6 +32,10 @@ export class WebGLEmulatorContext {
 	private _indexesBuffer: ArrayBuffer | null
 	private _attributes: Record<string, AttributePointer>
 	private _uniforms: Record<string, number | number[]>
+
+	public get drawer() {
+		return this._drawer
+	}
 
 	constructor() {
 		this._drawer = new CanvasDrawer()
@@ -63,8 +71,9 @@ export class WebGLEmulatorContext {
 	public __connect(
 		canvas: HTMLCanvasElement,
 		ctx: CanvasRenderingContext2D,
+		logger: Logger,
 	): void {
-		this._drawer.__connect(canvas, ctx)
+		this._drawer.__connect(canvas, ctx, logger)
 	}
 
 	public __disconnect(): void {
@@ -102,7 +111,7 @@ export class WebGLEmulatorContext {
 		if (emulatorShader) {
 			try {
 				const text = this._compile(emulatorShader.source)
-				let fn: any
+				let fn: UnknownShaderFn | null = null
 
 				// init vars
 
@@ -137,7 +146,12 @@ export class WebGLEmulatorContext {
 						'return gl_Position;',
 					].join('\n')
 
-					fn = Function('attributes', 'uniforms', 'varyings', source)
+					fn = Function(
+						'attributes',
+						'uniforms',
+						'varyings',
+						source,
+					) as UnknownShaderFn
 				}
 
 				// if fragment
@@ -159,12 +173,12 @@ export class WebGLEmulatorContext {
 						'varyings',
 						'gl_FragCoord',
 						source,
-					)
+					) as UnknownShaderFn
 				}
 
 				this._compile.compiler.reset()
 				if (fn) {
-					emulatorShader.fn = fn as () => any
+					emulatorShader.fn = fn as UnknownShaderFn
 				}
 			} catch (e) {
 				console.error(e)
@@ -219,8 +233,8 @@ export class WebGLEmulatorContext {
 				)
 
 				this._programs.set(program, {
-					vertex: emulatorProgram.vertex.fn,
-					fragment: emulatorProgram.fragment.fn,
+					vertex: emulatorProgram.vertex.fn as VertexShaderFn,
+					fragment: emulatorProgram.fragment.fn as FragmentShaderFn,
 					attributes: new Map(),
 					uniforms: new WeakMap(),
 					varyings,
@@ -463,16 +477,32 @@ export class WebGLEmulatorContext {
 	}
 
 	public drawArrays(mode: number, first: number, count: number): void {
-		if (this._program && this._vertexBuffer) {
-			this._drawer.drawArrays(
+		const program = this._program
+		const vertexBuffer = this._vertexBuffer
+
+		if (program && vertexBuffer) {
+			const { stride } = Object.values(this._attributes)[0]
+			const size = Math.round(vertexBuffer.byteLength / stride)
+			const array = new Uint16Array(size)
+
+			const type = WebGLRenderingContext.UNSIGNED_SHORT
+			const offset = Uint16Array.BYTES_PER_ELEMENT * first
+
+			for (let i = 0; i < size; ++i) {
+				array[i] = i
+			}
+
+			this._drawer.drawBuffer(Drawer.Arrays, {
 				mode,
-				first,
+				type,
+				offset,
 				count,
-				this._program,
-				this._vertexBuffer,
-				this._attributes,
-				this._uniforms,
-			)
+				program,
+				vertexBuffer,
+				indexesBuffer: array.buffer,
+				attributes: this._attributes,
+				uniforms: this._uniforms,
+			})
 		}
 	}
 
@@ -482,18 +512,22 @@ export class WebGLEmulatorContext {
 		type: number,
 		offset: number,
 	): void {
-		if (this._program && this._vertexBuffer && this._indexesBuffer) {
-			this._drawer.drawElements(
+		const program = this._program
+		const vertexBuffer = this._vertexBuffer
+		const indexesBuffer = this._indexesBuffer
+
+		if (program && vertexBuffer && indexesBuffer) {
+			this._drawer.drawBuffer(Drawer.Elements, {
 				mode,
-				count,
 				type,
 				offset,
-				this._program,
-				this._vertexBuffer,
-				this._indexesBuffer,
-				this._attributes,
-				this._uniforms,
-			)
+				count,
+				program,
+				vertexBuffer,
+				indexesBuffer,
+				attributes: this._attributes,
+				uniforms: this._uniforms,
+			})
 		}
 	}
 }

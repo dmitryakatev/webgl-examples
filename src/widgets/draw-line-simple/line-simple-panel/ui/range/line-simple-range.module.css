@@ -1,0 +1,15 @@
+.range {
+	display: flex;
+	flex-direction: row;
+	padding-top: 50px;
+	width: 100%;
+
+	input {
+		flex: 1;
+	}
+
+	.value {
+		width: 40px;
+		text-align: right;
+	}
+}

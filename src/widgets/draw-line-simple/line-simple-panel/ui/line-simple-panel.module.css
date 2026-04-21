@@ -1,0 +1,45 @@
+.panel {
+	display: flex;
+	flex-direction: row;
+	box-sizing: border-box;
+	padding: 5px 0;
+
+	label {
+		font-size: 14px;
+	}
+}
+
+.settings {
+	width: 200px;
+}
+
+.buttons {
+	flex: 1;
+}
+
+.wrap {
+	padding: 10px;
+}
+
+.group {
+	display: flex;
+	flex-direction: row;
+	gap: 20px;
+}
+
+.wrap:last-child {
+	flex: 1;
+	display: flex;
+}
+
+.input {
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.textarea {
+	width: 100%;
+	flex: 1;
+	box-sizing: border-box;
+	resize: none;
+}

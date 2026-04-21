@@ -8,7 +8,7 @@ export type StructArrayIndexesFactoryOptions = {
 }
 
 export type StructVertex = StructFieldTyple
-export type StructIndex = [['index', 3]] // в треугольнике 3 вершины
+export type StructIndex = [['index', 1]]
 
 export type VertexArray<T extends StructVertex[]> = StructArray<T>
 export type IndexesArray = StructArray<StructIndex>

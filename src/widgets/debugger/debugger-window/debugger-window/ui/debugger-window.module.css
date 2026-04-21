@@ -1,0 +1,14 @@
+.content {
+	display: flex;
+	flex-direction: row;
+	margin: 10px;
+}
+
+.debuggerContainer {
+	margin-right: 10px;
+}
+
+.tabsContainer {
+	display: flex;
+	width: 600px;
+}

@@ -192,7 +192,7 @@ const line = (
 		} else if (currentJoin === LINE_JOIN.Round) {
 			roundLine(
 				currentPoint,
-				nextNormal,
+				nextPoint,
 				prevNormal,
 				nextNormal,
 				startOfLine,
@@ -498,9 +498,9 @@ const addCurrentPoint = (
 	)
 
 	if (_e1 >= 0 && _e2 >= 0) {
-		indexes.push({
-			index: [_e1, _e2, _e3],
-		})
+		indexes.push({ index: _e1 })
+		indexes.push({ index: _e2 })
+		indexes.push({ index: _e3 })
 	}
 
 	_e1 = _e2
@@ -523,9 +523,9 @@ const addCurrentPoint = (
 	)
 
 	if (_e1 >= 0 && _e2 >= 0) {
-		indexes.push({
-			index: [_e1, _e2, _e3],
-		})
+		indexes.push({ index: _e1 })
+		indexes.push({ index: _e2 })
+		indexes.push({ index: _e3 })
 	}
 
 	_e1 = _e2
@@ -584,9 +584,9 @@ const addPieSliceVertex = (
 	)
 
 	if (_e1 >= 0 && _e2 >= 0) {
-		indexes.push({
-			index: [_e1, _e2, _e3],
-		})
+		indexes.push({ index: _e1 })
+		indexes.push({ index: _e2 })
+		indexes.push({ index: _e3 })
 	}
 
 	if (lineTurnsLeft) {

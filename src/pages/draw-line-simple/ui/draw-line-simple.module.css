@@ -1,0 +1,24 @@
+.container {
+	display: flex;
+}
+
+.left {
+	width: 800px;
+}
+
+.canvasWrap {
+	display: inline-block;
+	line-height: 0;
+	border: 1px solid silver;
+}
+
+.content {
+	flex: 1;
+	display: flex;
+}
+
+.canvas {
+	display: block;
+	width: 400px;
+	height: 400px;
+}

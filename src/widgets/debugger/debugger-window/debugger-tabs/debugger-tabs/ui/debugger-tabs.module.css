@@ -1,0 +1,11 @@
+.tab {
+	width: 90px;
+}
+
+.tabsContent {
+	flex: 1;
+}
+
+.content {
+	overflow-y: auto;
+}

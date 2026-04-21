@@ -84,13 +84,18 @@ export abstract class Program<U extends Uniforms, M extends Matrices = never> {
 		}
 	}
 
-	public draw(): void {
+	public draw(mode?: number, _count?: number, _start?: number): void {
 		const gl = this._gl
 
 		if (this._typeIndex === -1) {
-			gl.drawArrays(gl.TRIANGLES, 0, this._count)
+			gl.drawArrays(mode ?? gl.TRIANGLES, 0, this._count)
 		} else {
-			gl.drawElements(gl.TRIANGLES, this._count, this._typeIndex, 0)
+			gl.drawElements(
+				mode ?? gl.TRIANGLES,
+				this._count,
+				this._typeIndex,
+				0,
+			)
 		}
 	}
 
@@ -130,7 +135,7 @@ export abstract class Program<U extends Uniforms, M extends Matrices = never> {
 		// нужно будет передавать количество вершин
 		// а массив с индексами хранит количество треугольников
 		// преобразуем в количество вершин
-		this._count = buffer.count * 3
+		this._count = buffer.count
 		this._typeIndex = type
 	}
 
